@@ -8,8 +8,9 @@ import (
 
 func main() {
 	file := "customers.csv"
-	err := customerimporter.DomainCustomersCounter(file)
+	domainEmails, err := customerimporter.DomainEmailsCounter(file)
 	if err != nil {
 		fmt.Println(err)
 	}
+	fmt.Println(domainEmails)
 }

@@ -13,28 +13,40 @@ import (
 	"strings"
 )
 
-// 1. read the csv file, check if it's there and if data is not missing, otherwise -> throw an error
-// 2. create a method that takes the emails and extracts just the domain (read only symbols after @ and finish if the next one is .) append domain names as the keys of the map
-// 3. create the comparing function that checks if the email contains a domain name, ??? Or maybe just when extracting domain name, append it to the map as the key, and increase the count by 1 if only the emails matter not the customer numbers.
+// DomainCount is the struct that stores domain name and the amount of emails that belong to it
+type DomainCount struct {
+	Domain     string
+	EmailCount int
+}
 
-func DomainCustomersCounter(filename string) error {
+// DomainEmailsCounter returns sorted array of domain and count of emails belonging to it, that are read from the given file
+func DomainEmailsCounter(filename string) ([]DomainCount, error) {
 	if filename == "" {
-		return fmt.Errorf("file name is empty")
+		return nil, fmt.Errorf("file name is empty")
 	}
 	file, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("failed to open csv file: %s", err)
+		return nil, fmt.Errorf("failed to open csv file: %s", err)
 	}
+
 	defer file.Close()
 
+	domains, domainEmailsCount, err := readDomainsAndCountEmails(file)
+
+	return sortDomainCount(domains, domainEmailsCount), nil
+}
+
+// readDomainsAndCountEmails reads given csv file and returns an array of domains, and map with the count of emails existing for each domain
+func readDomainsAndCountEmails(file *os.File) ([]string, map[string]int, error) {
 	reader := csv.NewReader(file)
 
 	header, err := reader.Read()
 	if err != nil {
-		return fmt.Errorf("failed to read csv header: %s", err)
+		return nil, nil, fmt.Errorf("failed to read csv header: %s", err)
 	}
 
 	var domains []string
+	domainEmailsCount := make(map[string]int)
 
 	columnIndex := make(map[string]int)
 	for i, colName := range header {
@@ -51,23 +63,28 @@ func DomainCustomersCounter(filename string) error {
 
 		email := row[columnIndex["email"]]
 
-		domainParts, err := extractDomain(email)
+		domainParts, err := extractDomainParts(email)
 		if err != nil {
-			return fmt.Errorf("failed to extract email domain: %s", err)
+			fmt.Printf("failed to extract email domain: %s\n", err)
+			continue
 		}
-		// only append valid domains
-		if isDomainValid(domainParts) {
+		// only count valid domains
+		if !isDomainValid(domainParts) {
+			continue
+		}
+
+		// only append domains that are new
+		if domainEmailsCount[domainParts[0]] == 0 {
 			domains = append(domains, domainParts[0])
 		}
+
+		domainEmailsCount[domainParts[0]] += 1
 	}
-
-	sort.Strings(domains)
-
-	return nil
+	return domains, domainEmailsCount, nil
 }
 
-// extractDomain extracts domain from the given email, and returns it. In case of the invalid email or domain format it returns an error
-func extractDomain(email string) ([]string, error) {
+// extractDomainParts extracts domain parts from the given email, and returns it. In case of the invalid email format it returns an error
+func extractDomainParts(email string) ([]string, error) {
 	emailParts := strings.SplitAfter(email, "@")
 	if len(emailParts) == 1 {
 		return []string{}, fmt.Errorf(`wrong email format, missing "@" in: %s`, email)
@@ -81,7 +98,7 @@ func extractDomain(email string) ([]string, error) {
 	return emailParts, nil
 }
 
-// isDomainValid checks if the elements of array with the period-separated domain parts is valid
+// isDomainValid checks if the elements of array with the period-separated domain parts are valid
 func isDomainValid(domainParts []string) bool {
 	// last part of the email must consist of two period-separated parts
 	if len(domainParts) != 2 {
@@ -92,4 +109,20 @@ func isDomainValid(domainParts []string) bool {
 		return false
 	}
 	return true
+}
+
+// sortDomainCount returns sorted array of DomainCount structs based on the array of domains and the map of domainEmailCount
+func sortDomainCount(domains []string, domainEmailsCount map[string]int) []DomainCount {
+	if len(domains) == 0 || domainEmailsCount == nil {
+		return nil
+	}
+	sort.Strings(domains)
+	res := []DomainCount{}
+	for _, d := range domains {
+		res = append(res, DomainCount{
+			Domain:     d,
+			EmailCount: domainEmailsCount[d],
+		})
+	}
+	return res
 }
