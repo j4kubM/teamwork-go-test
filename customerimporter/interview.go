@@ -63,43 +63,43 @@ func readDomainsAndCountEmails(file *os.File) ([]string, map[string]int, error) 
 
 		email := row[columnIndex["email"]]
 
-		domainParts, err := extractDomainParts(email)
+		domain, err := extractDomain(email)
 		if err != nil {
 			fmt.Printf("failed to extract email domain: %s\n", err)
 			continue
 		}
 		// only count valid domains
-		if !isDomainValid(domainParts) {
+		if !isDomainValid(domain) {
+			fmt.Printf("invalid domain: %s\n", domain)
 			continue
 		}
 
 		// only append domains that are new
-		if domainEmailsCount[domainParts[0]] == 0 {
-			domains = append(domains, domainParts[0])
+		if domainEmailsCount[domain] == 0 {
+			domains = append(domains, domain)
 		}
 
-		domainEmailsCount[domainParts[0]] += 1
+		domainEmailsCount[domain] += 1
 	}
 	return domains, domainEmailsCount, nil
 }
 
-// extractDomainParts extracts domain parts from the given email, and returns it. In case of the invalid email format it returns an error
-func extractDomainParts(email string) ([]string, error) {
+// extractDomain extracts domain from the given email, and returns it. In case of the invalid email format it returns an error
+func extractDomain(email string) (string, error) {
 	emailParts := strings.SplitAfter(email, "@")
 	if len(emailParts) == 1 {
-		return []string{}, fmt.Errorf(`wrong email format, missing "@" in: %s`, email)
+		return "", fmt.Errorf(`wrong email format, missing "@" in: %s`, email)
 	}
-
-	emailParts = strings.Split(emailParts[1], ".")
-	if len(emailParts) == 1 {
-		return []string{}, fmt.Errorf(`wrong email format, missing "." in: %s`, email)
+	if !strings.Contains(email, ".") {
+		return "", fmt.Errorf(`wrong email format, missing "." in: %s`, email)
 	}
-
-	return emailParts, nil
+	return emailParts[1], nil
 }
 
 // isDomainValid checks if the elements of array with the period-separated domain parts are valid
-func isDomainValid(domainParts []string) bool {
+func isDomainValid(domain string) bool {
+	domainParts := strings.Split(domain, ".")
+
 	// last part of the email must consist of two period-separated parts
 	if len(domainParts) != 2 {
 		return false

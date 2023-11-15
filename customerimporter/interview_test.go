@@ -57,26 +57,28 @@ func TestExtractDomain(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		email  string
-		exp    []string
+		exp    string
 		expErr error
 	}{
 		{
 			name:   "email missing @",
 			email:  "notAValidEmail",
+			exp:    "",
 			expErr: fmt.Errorf(`wrong email format, missing "@" in: notAValidEmail`),
 		},
 		{
 			name:   "email missing .",
 			email:  "john-smith@invalidDomain",
+			exp:    "",
 			expErr: fmt.Errorf(`wrong email format, missing "." in: john-smith@invalidDomain`),
 		},
 		{
 			name:  "successful domain extraction",
 			email: "john-smith@validmail.com",
-			exp:   []string{"validmail", "com"},
+			exp:   "validmail.com",
 		},
 	} {
-		actual, err := extractDomainParts(tc.email)
+		actual, err := extractDomain(tc.email)
 		if tc.expErr != nil {
 			assert.Equal(t, tc.expErr, err)
 		} else {
@@ -88,32 +90,32 @@ func TestExtractDomain(t *testing.T) {
 
 func TestIsDomainValid(t *testing.T) {
 	for _, tc := range []struct {
-		name        string
-		domainParts []string
-		exp         bool
+		name   string
+		domain string
+		exp    bool
 	}{
 		{
-			name:        "not enough domain parts",
-			domainParts: []string{"validmail"},
-			exp:         false,
+			name:   "not enough domain parts",
+			domain: "validmail",
+			exp:    false,
 		},
 		{
-			name:        "too many domain parts",
-			domainParts: []string{"validmail", "but-too-complicated", "com"},
-			exp:         false,
+			name:   "too many domain parts",
+			domain: "validmail.but-too-complicated.com",
+			exp:    false,
 		},
 		{
-			name:        "invalid last part",
-			domainParts: []string{"validmail", "c"},
-			exp:         false,
+			name:   "invalid last part",
+			domain: "validmail.c",
+			exp:    false,
 		},
 		{
-			name:        "valid domain",
-			domainParts: []string{"validmail", "com"},
-			exp:         true,
+			name:   "valid domain",
+			domain: "validmail.com",
+			exp:    true,
 		},
 	} {
-		actual := isDomainValid(tc.domainParts)
+		actual := isDomainValid(tc.domain)
 		assert.Equal(t, tc.exp, actual)
 	}
 
